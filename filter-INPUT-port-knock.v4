@@ -1,0 +1,14 @@
+-A INPUT -i lo -j ACCEPT
+-A INPUT -s 192.168.0.0/16 -d 192.168.0.0/16 -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -m conntrack --ctstate INVALID -j DROP
+
+; two ports for knocking on
+-A INPUT -p tcp -m tcp --dport 1000 -m recent --set --name knock_1 --mask 255.255.255.255 --rsource 
+-A INPUT -p tcp -m tcp --dport 1001 -m recent --set --name knock_2 --mask 255.255.255.255 --rsource 
+
+; if two ports were knocked on
+-A INPUT -p tcp -m tcp --dport 443 -m recent --rcheck --seconds 15 --name knock_1 --mask 255.255.255.255 --rsource -m recent --rcheck --seconds 15 --name knock_2 --mask 255.255.255.255 --rsource -j ACCEPT
+
+; fast rejection for knocked ports
+-A INPUT -p tcp -m multiport --dports 1000,1001 -m comment --comment ssh-ports -j REJECT --reject-with tcp-reset
