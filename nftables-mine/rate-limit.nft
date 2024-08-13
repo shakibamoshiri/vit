@@ -1,0 +1,78 @@
+flush ruleset
+
+
+table ip filter {
+	chain input {
+		type filter hook input priority filter; policy accept;
+		
+        tcp dport 52321 meter con_limit { ip saddr ct  count over 2 } drop
+
+        ### worked, it should be first rule in the chain
+		# tcp dport 52321 meter speed_limit { ip saddr limit rate over 1 mbytes/second } drop
+
+		iifname lo accept \
+		comment "accept any localhost traffic"
+
+		ct state { established, related } accept \
+		comment "accept traffic originated from us"
+
+		ct state invalid drop \
+		comment "drop invalid connections"
+
+		### rate limit
+        ## worked, it is a global limit
+		# tcp dport 52321 counter limit rate 1/second accept
+		# tcp dport 52321 counter drop
+
+        ### based on source ip
+		# tcp dport 52321 counter meter limit_52321 { ip saddr limit rate over 1/second } drop
+
+        ### source ip or a net
+		# tcp dport 52321 counter meter limit_52321 { ip saddr and 255.255.255.0 limit rate over 1/second } drop
+
+        ### speed limit
+        # limit rate over 10 mbytes/second drop
+		# tcp dport 52321  meter speed_limit { ip saddr limit rate over 1 mbytes/second } drop
+
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+	}
+
+	chain output {
+		type filter hook output priority filter; policy accept;
+	}
+}
+
+
+table ip nat {
+	chain prerouting {
+		type nat hook prerouting priority dstnat; policy accept;
+		
+		# tcp dport 52321 counter dnat numgen inc mod 2 map { 
+		# 	0 : 192.168.77.1,
+		# 	1 : 192.168.77.2
+		# }
+
+		### ports should be same, why ?
+		# meta l4proto tcp tcp dport 8080 counter dnat  numgen inc mod 2 map { 0 : 192.168.77.1, 1 : 192.168.77.2 }
+		# tcp dport 8080 dnat numgen inc mod 2 map { 0 : 192.168.77.1, 1 : 192.168.77.2 }
+
+		# worked fine
+                # meta l4proto tcp tcp dport 8080 counter dnat 192.168.77.2 : numgen inc mod 2 map { 0 : 2020, 1 : 2030 }
+
+	}
+
+	chain input {
+		type nat hook input priority 100; policy accept;
+	}
+
+	chain output {
+		type nat hook output priority -100; policy accept;
+	}
+
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+	}
+}
