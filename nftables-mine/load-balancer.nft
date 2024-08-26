@@ -62,3 +62,12 @@ table ip nat {
 		type nat hook postrouting priority srcnat; policy accept;
 	}
 }
+
+### localhost lb
+table ip nat {
+	chain mynat {
+		type nat hook output priority dstnat; policy accept;
+		tcp dport 8080 counter packets 16 bytes 960 dnat ip to numgen inc mod 2 map { 0 : 10.42.1.122 . 80, 1 : 10.42.2.114 . 80 }
+	}
+}
+
