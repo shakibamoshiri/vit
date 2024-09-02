@@ -1,0 +1,18 @@
+flush chain ip nat vip_out
+flush chain ip nat vip_post
+
+table ip nat {
+	chain vip_out {
+		type nat hook output priority dstnat; policy accept;
+		# tcp dport 4002 counter dnat jhash ip saddr . tcp dport mod 2  map { 
+		tcp dport 4002 counter dnat to numgen inc mod 2  map { 
+            0 : 172.31.100.1 . 4002,
+            1 : 172.31.100.2 . 4002
+        }
+	}
+
+	chain vip_post {
+		type nat hook postrouting priority srcnat; policy accept;
+        ip saddr { 192.168.77.1, 192.168.88.1 }  counter snat to 192.168.254.1
+	}
+}
