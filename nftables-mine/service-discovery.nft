@@ -1,0 +1,33 @@
+add table ip nat2
+
+delete table ip nat2
+
+table ip nat2 {
+	map xra_8001 {
+		type mark : ipv4_addr
+		size 65535
+        # timeout 1m
+		flags dynamic
+	}
+
+	chain prerouting {
+		type nat hook prerouting priority dstnat; policy accept;
+        tcp dport 18001 update @xra_8001 { numgen inc mod 1 : ip saddr } counter accept
+		tcp dport 28001 delete @xra_8001 { numgen inc mod 1 : ip saddr } counter accept
+		tcp dport { 8001, 8011, 8111 } counter dnat to numgen inc mod 1 map @xra_8001
+
+	}
+
+	chain input {
+		type nat hook input priority 100; policy accept;
+	}
+
+	chain output {
+		type nat hook output priority -100; policy accept;
+	}
+
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+	}
+}
+
